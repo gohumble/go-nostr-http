@@ -59,7 +59,7 @@ func (nc *Client) RoundTrip(r *http.Request) (*http.Response, error) {
 			wg.Done()
 		}
 	})
-	Publish(r.Context(), string(request), r.Host, nc.relay)
+	Publish(r.Context(), string(request), toPublicKey, nc.relay)
 	wg.Wait()
 	return &response, nil
 }
