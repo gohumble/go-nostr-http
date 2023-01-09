@@ -11,18 +11,25 @@ import (
 	"sync"
 )
 
-type Client struct {
+type Transport struct {
 	relay           *nostr.Relay
 	clientPublicKey string
 }
 
-func NewClient(relay *nostr.Relay, publicKey string) *Client {
-	return &Client{
+func NewClient(relay *nostr.Relay, publicKey string) *http.Client {
+	return &http.Client{
+		Transport: NewTransport(relay, publicKey),
+	}
+}
+
+func NewTransport(relay *nostr.Relay, publicKey string) *Transport {
+	return &Transport{
 		relay:           relay,
 		clientPublicKey: publicKey,
 	}
 }
-func (nc *Client) RoundTrip(r *http.Request) (*http.Response, error) {
+
+func (nc *Transport) RoundTrip(r *http.Request) (*http.Response, error) {
 	toPublicKey := r.Header.Get("NOSTR-TO-PUBLIC-KEY")
 	if toPublicKey == "" {
 		return nil, fmt.Errorf("please set NOSTR-TO-PUBLIC-KEY header")
