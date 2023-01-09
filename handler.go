@@ -27,7 +27,8 @@ func ReverseProxyHandler(relay *nostr.Relay, target *url.URL) SubscribeCallback 
 			panic(err)
 		}
 		request.RequestURI = ""
-		request.URL = target
+		request.URL.Scheme = target.Scheme
+		request.URL.Host = target.Host
 		c := http.Client{}
 		res, err := c.Do(request)
 		if err != nil {
