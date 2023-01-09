@@ -12,10 +12,16 @@ import (
 )
 
 type Client struct {
-	nostr           *nostr.Relay
+	relay           *nostr.Relay
 	clientPublicKey string
 }
 
+func NewClient(relay *nostr.Relay, publicKey string) *Client {
+	return &Client{
+		relay:           relay,
+		clientPublicKey: publicKey,
+	}
+}
 func (nc *Client) RoundTrip(r *http.Request) (*http.Response, error) {
 	toPublicKey := r.Header.Get("NOSTR-TO-PUBLIC-KEY")
 	if toPublicKey == "" {
@@ -28,7 +34,7 @@ func (nc *Client) RoundTrip(r *http.Request) (*http.Response, error) {
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	var response http.Response
-	Subscribe(nc.nostr, GetSubscriptionFilter(nc.clientPublicKey), func(message nostr.Event, sub *nostr.Subscription) {
+	Subscribe(nc.relay, GetSubscriptionFilter(nc.clientPublicKey), func(message nostr.Event, sub *nostr.Subscription) {
 		if message.Tags.ContainsAny("p", []string{nc.clientPublicKey}) {
 			rs, err := nip04.ComputeSharedSecret(Configuration.PrivateKey, message.PubKey)
 			if err != nil {
@@ -53,7 +59,7 @@ func (nc *Client) RoundTrip(r *http.Request) (*http.Response, error) {
 			wg.Done()
 		}
 	})
-	Publish(r.Context(), string(request), r.Host, nc.nostr)
+	Publish(r.Context(), string(request), r.Host, nc.relay)
 	wg.Wait()
 	return &response, nil
 }
