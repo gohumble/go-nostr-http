@@ -12,9 +12,13 @@ type SubscribeCallback func(message nostr.Event, sub *nostr.Subscription)
 func Subscribe(ctx context.Context, relay *nostr.Relay, filter nostr.Filters, callback SubscribeCallback) {
 	sub := relay.Subscribe(ctx, filter)
 	go func() {
-		for event := range sub.Events {
-			time.Sleep(time.Millisecond * 10)
+		select {
+		case event := <-sub.Events:
 			callback(event, sub)
+		case <-ctx.Done():
+			return
+		default:
+			time.Sleep(time.Millisecond * 25)
 		}
 	}()
 }
