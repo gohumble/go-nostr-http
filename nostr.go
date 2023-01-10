@@ -15,7 +15,7 @@ func Subscribe(ctx context.Context, relay *nostr.Relay, filter nostr.Filters, ca
 		for {
 			select {
 			case event := <-sub.Events:
-				callback(event, sub)
+				go callback(event, sub)
 			case <-ctx.Done():
 				return
 			default:
