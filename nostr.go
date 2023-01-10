@@ -2,26 +2,25 @@ package httpNostr
 
 import (
 	"context"
-	"fmt"
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/nbd-wtf/go-nostr/nip04"
-	"log"
 	"time"
 )
 
 type SubscribeCallback func(message nostr.Event, sub *nostr.Subscription)
 
-func Subscribe(pool *nostr.Relay, filter nostr.Filters, callback SubscribeCallback) {
-	sub := pool.Subscribe(context.Background(), filter)
+func Subscribe(ctx context.Context, relay *nostr.Relay, filter nostr.Filters, callback SubscribeCallback) {
+	sub := relay.Subscribe(ctx, filter)
 	go func() {
 		for event := range sub.Events {
+			time.Sleep(time.Millisecond * 10)
 			callback(event, sub)
 		}
 	}()
 }
 
-func Publish(ctx context.Context, content, publicKey string, pool *nostr.Relay) {
-	secret, err := nip04.ComputeSharedSecret(Configuration.PrivateKey, publicKey)
+func Publish(ctx context.Context, content, toPublicKey string, relay *nostr.Relay) {
+	secret, err := nip04.ComputeSharedSecret(Configuration.PrivateKey, toPublicKey)
 	if err != nil {
 		panic(err)
 	}
@@ -30,7 +29,7 @@ func Publish(ctx context.Context, content, publicKey string, pool *nostr.Relay) 
 		panic(err)
 	}
 	tags := make(nostr.Tags, 0)
-	tags = append(tags, nostr.Tag{"p", publicKey})
+	tags = append(tags, nostr.Tag{"p", toPublicKey})
 	msg, err := nip04.Encrypt(content, secret)
 	event := nostr.Event{
 		CreatedAt: time.Now(),
@@ -43,11 +42,7 @@ func Publish(ctx context.Context, content, publicKey string, pool *nostr.Relay) 
 	if err != nil {
 		panic(err)
 	}
-	status := pool.Publish(ctx, event)
-	if err != nil {
-		fmt.Printf("error calling PublishEvent(): %s\n", err.Error())
-	}
-	log.Printf("Status: %s\n", status.String())
+	relay.Publish(ctx, event)
 }
 
 func GetSubscriptionFilter(toPublicKey string) nostr.Filters {

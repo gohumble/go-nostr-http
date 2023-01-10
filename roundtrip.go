@@ -2,6 +2,7 @@ package httpNostr
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/nbd-wtf/go-nostr/nip04"
@@ -9,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"sync"
+	"time"
 )
 
 type Transport struct {
@@ -41,7 +43,8 @@ func (nc *Transport) RoundTrip(r *http.Request) (*http.Response, error) {
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	var response http.Response
-	Subscribe(nc.relay, GetSubscriptionFilter(nc.clientPublicKey), func(message nostr.Event, sub *nostr.Subscription) {
+	ctx, cancel := context.WithDeadline(r.Context(), time.Now().Add(time.Second*30))
+	Subscribe(ctx, nc.relay, GetSubscriptionFilter(nc.clientPublicKey), func(message nostr.Event, sub *nostr.Subscription) {
 		if message.Tags.ContainsAny("p", []string{nc.clientPublicKey}) {
 			rs, err := nip04.ComputeSharedSecret(Configuration.PrivateKey, message.PubKey)
 			if err != nil {
@@ -62,11 +65,11 @@ func (nc *Transport) RoundTrip(r *http.Request) (*http.Response, error) {
 				Request:       r,
 				Header:        make(http.Header, 0),
 			}
-			sub.Unsub()
+			cancel()
 			wg.Done()
 		}
 	})
-	Publish(r.Context(), string(request), toPublicKey, nc.relay)
+	Publish(ctx, string(request), toPublicKey, nc.relay)
 	wg.Wait()
 	return &response, nil
 }
